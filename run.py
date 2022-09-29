@@ -1,6 +1,5 @@
 import os
 from tkinter import FALSE
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
 import torch
 from transformers import RobertaTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -11,8 +10,9 @@ from sklearn.metrics import confusion_matrix
 from model import *
 from data import *
 from generate import *
+from PARAM import MODEL_NAME_OR_PATH
 
-tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 bz_list = [8]
 lr_list = [1e-1, 5e-2, 2e-2, 1e-2, 5e-3]
 lambd_list = [1e-7]#, 1e-5, 1e-4, 1e-3]
@@ -153,12 +153,12 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
         current_model_save_directory = os.path.join('save', dataset_name, 'epoch_'+str(epoch))
         if unmasker_new_model:
             model.save_pretrained(current_model_save_directory)
-            tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+            tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
             tokenizer.save_pretrained(current_model_save_directory)
             unmasker = pipeline('fill-mask', model=current_model_save_directory, device=0)
         else:
-            unmasker = pipeline('fill-mask', model='/shared/data2/jiaxinh3/Typing/pre-trained', device=0)
-        tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+            unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+        tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 
         for i in range(step_num):
             it = list(range(i * predict_batch_size, min((i+1) * predict_batch_size, len(train_sent) )))
@@ -395,6 +395,11 @@ if __name__ == "__main__":
     parser.add_argument('--unmasker_new_model', default=1, type=int)
     parser.add_argument('--save_res', type=str)
 
+    parser.add_argument('--train_file', type=str, default='train_5_shot.json')
+    parser.add_argument('--test_file', type=str, default='test.json')
+    parser.add_argument('--new_hier_file', type=str, default='new_hier.txt')
+    parser.add_argument('--old_hier_file', type=str, default='old_hier.txt')
+
     args = parser.parse_args()
     print(args)
     BATCH_SIZE = args.batch_size
@@ -415,7 +420,7 @@ if __name__ == "__main__":
     else:
         unmasker_new_model = False
     project = True
-
+    os.makedirs(os.path.join('results', dataset), exist_ok=True)
     with open(os.path.join('results', dataset, save_res), 'a') as fout:
         fout.write(f'args: {args}\n')
         train_acc_average = 0
@@ -425,6 +430,8 @@ if __name__ == "__main__":
         test_micro_f1_average = 0
         test_macro_f1_average = 0
         for i in range(6, 20):
+
+            """
             # train_file = os.path.join('data', dataset, dataset+'_train_few_shot_5_'+str(i)+'.json')
             train_file = os.path.join('data', dataset, dataset+'_train_new_few_shot_5_'+str(i)+'.json')
             # train_file = os.path.join('data', dataset, 'supervised.json')
@@ -433,6 +440,11 @@ if __name__ == "__main__":
             new_hier = dataset+'_hier.txt'
             old_hier = os.path.join('data', 'ontology', dataset+'_types.txt')
             # old_hier = os.path.join('data', 'ontology', dataset+'_types_old.txt')
+            """
+            train_file = os.path.join('data', dataset, args.train_file)
+            test_file = os.path.join('data', dataset, args.test_file)
+            new_hier = os.path.join('data', dataset, args.new_hier_file)
+            old_hier = os.path.join('data', dataset, args.old_hier_file)
 
             # train_type_count = read_types(test_file)
             train_type_count_1 = read_types(train_file)
@@ -447,7 +459,7 @@ if __name__ == "__main__":
             new_instances = pos_data[7]
             test_data = read_file_and_hier(test_file, new_hier, old_hier, train_type_count, use_node_list=True)
             for j in range(1):
-                model = PromptNER.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained', label_num=len(node_id_list))
+                model = PromptNER.from_pretrained(MODEL_NAME_OR_PATH, label_num=len(node_id_list))
                 model.init_project(node_id_list, output_num=len(node_id_list), new_instances=new_instances)
                 device = torch.device("cuda")
                 model.to(device)

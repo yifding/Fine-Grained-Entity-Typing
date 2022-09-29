@@ -2,7 +2,8 @@ import os
 import torch
 print("let's use ", torch.cuda.device_count(), "GPUs!")
 import transformers
-from transformers import RobertaPreTrainedModel, RobertaTokenizer, RobertaForMaskedLM, RobertaModel, RobertaConfig
+from transformers import RobertaTokenizer
+from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel, RobertaForMaskedLM, RobertaModel, RobertaConfig
 from torch import nn
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
@@ -49,6 +50,22 @@ class PromptNER(RobertaPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
+
+    def update_keys_to_ignore(self, config, del_keys_to_ignore):
+        """Remove some keys from ignore list"""
+        if not config.tie_word_embeddings:
+            # must make a new list, or the class variable gets modified!
+            self._keys_to_ignore_on_save = [k for k in self._keys_to_ignore_on_save if k not in del_keys_to_ignore]
+            self._keys_to_ignore_on_load_missing = [
+                k for k in self._keys_to_ignore_on_load_missing if k not in del_keys_to_ignore
+            ]
+
+    def post_init(self):
+        """
+        A method executed at the end of each Transformer model initialization, to execute code that needs the model's
+        modules properly initialized (such as weight initialization).
+        """
+        self.init_weights()
 
     def init_project(self, node_id_list, output_num, new_instances=None):
         with torch.no_grad():

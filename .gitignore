@@ -1,0 +1,6 @@
+__pycache__/
+
+RUN_FILES/
+data/
+results/
+save/

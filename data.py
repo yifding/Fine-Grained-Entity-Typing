@@ -1,9 +1,14 @@
+import os
+import json
+from collections import defaultdict
 import torch
 from transformers import RobertaTokenizer
 from hierarchy import *
 from transformers import pipeline
-unmasker = pipeline('fill-mask', model='/shared/data2/jiaxinh3/Typing/pre-trained', device=0)
-tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+from PARAM import MODEL_NAME_OR_PATH
+
+unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 
 def save_to_file(sents):
     with open('tmp.txt', 'a') as fout:
@@ -121,8 +126,6 @@ def generate_batch(batch):
     train_sent, sent_att, sent_mask, sent_label = batch
     return train_sent, sent_att, sent_mask, sent_label
 
-import json
-from collections import defaultdict
 def read_types(filename):
     train_type = defaultdict(int)
     
@@ -131,7 +134,7 @@ def read_types(filename):
     with open(filename) as f:
         for line in f:
             d = json.loads(line.strip())
-            cats = d['y_category']
+            cats = d['entity_type']
             finest_cat = ''
             for cat in cats:
                 if len(finest_cat) == 0:
@@ -193,7 +196,7 @@ def read_file_and_hier(filename, new_hier, old_hier, train_type_count, use_node_
     with open(filename) as f:
         for line in f:
             d = json.loads(line.strip())
-            cats = d['y_category']
+            cats = d['entity_type']
             finest_cat = ''
             for cat in cats:
                 if len(finest_cat) == 0:
@@ -209,10 +212,10 @@ def read_file_and_hier(filename, new_hier, old_hier, train_type_count, use_node_
                 continue
             category = train_types[finest_cat]
 
-            words = d['left_context'] + d['mention_as_list'] + d['right_context']
+            words = d['left_context'] + d['mention'] + d['right_context']
 
             tags = ['O'] * len(d['left_context']) + ['B-'+category] \
-                + ['I-'+category] * (len(d['mention_as_list']) - 1) \
+                + ['I-'+category] * (len(d['mention']) - 1) \
                 + ['O'] * len(d['right_context'])
             if len(words) != len(tags):
                 continue

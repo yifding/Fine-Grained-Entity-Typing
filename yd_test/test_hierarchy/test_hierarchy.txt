@@ -1,0 +1,4 @@
+root
+	art
+		art-music
+		art-writtenart

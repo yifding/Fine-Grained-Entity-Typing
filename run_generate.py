@@ -1,6 +1,5 @@
 import os
 from tkinter import FALSE
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import torch
 from transformers import RobertaTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -11,8 +10,9 @@ from sklearn.metrics import confusion_matrix
 from model import *
 from data import *
 from generate import *
+from PARAM import MODEL_NAME_OR_PATH
 
-tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 bz_list = [8]
 lr_list = [1e-1, 5e-2, 2e-2, 1e-2, 5e-3]
 lambd_list = [1e-7]#, 1e-5, 1e-4, 1e-3]
@@ -153,12 +153,12 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
         current_model_save_directory = os.path.join('save', dataset_name, 'epoch_'+str(epoch))
         if unmasker_new_model:
             model.save_pretrained(current_model_save_directory)
-            tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+            tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
             tokenizer.save_pretrained(current_model_save_directory)
             unmasker = pipeline('fill-mask', model=current_model_save_directory, device=0)
         else:
-            unmasker = pipeline('fill-mask', model='/shared/data2/jiaxinh3/Typing/pre-trained', device=0)
-        tokenizer = RobertaTokenizer.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained')
+            unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+        tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 
         for i in range(step_num):
             it = list(range(i * predict_batch_size, min((i+1) * predict_batch_size, len(train_sent) )))
@@ -447,7 +447,7 @@ if __name__ == "__main__":
             new_instances = pos_data[7]
             test_data = read_file_and_hier(test_file, new_hier, old_hier, train_type_count, use_node_list=True)
             for j in range(1):
-                model = PromptNER.from_pretrained('/shared/data2/jiaxinh3/Typing/pre-trained', label_num=len(node_id_list))
+                model = PromptNER.from_pretrained(MODEL_NAME_OR_PATH, label_num=len(node_id_list))
                 model.init_project(node_id_list, output_num=len(node_id_list), new_instances=new_instances)
                 device = torch.device("cuda")
                 model.to(device)
