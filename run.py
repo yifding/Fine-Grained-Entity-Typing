@@ -1,7 +1,7 @@
 import os
 from tkinter import FALSE
 import torch
-from transformers import RobertaTokenizer
+from transformers import RobertaTokenizer, AutoModelForMaskedLM
 from transformers import AdamW, get_linear_schedule_with_warmup
 import argparse
 from tqdm import tqdm
@@ -11,6 +11,7 @@ from model import *
 from data import *
 from generate import *
 from PARAM import MODEL_NAME_OR_PATH
+from pipeline import FillMaskPipeline
 
 tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 bz_list = [8]
@@ -155,9 +156,15 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
             model.save_pretrained(current_model_save_directory)
             tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
             tokenizer.save_pretrained(current_model_save_directory)
-            unmasker = pipeline('fill-mask', model=current_model_save_directory, device=0)
+
+            # unmasker = pipeline('fill-mask', model=current_model_save_directory, device=0)
+            unmasker_model = AutoModelForMaskedLM.from_pretrained(current_model_save_directory)
+            unmasker = FillMaskPipeline(model=unmasker_model, tokenizer=tokenizer, device=0)
         else:
-            unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+            # unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+            unmasker_model = AutoModelForMaskedLM.from_pretrained(MODEL_NAME_OR_PATH)
+            unmasker = FillMaskPipeline(model=unmasker_model, tokenizer=tokenizer, device=0)
+
         tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
 
         for i in range(step_num):

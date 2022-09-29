@@ -2,13 +2,16 @@ import os
 import json
 from collections import defaultdict
 import torch
-from transformers import RobertaTokenizer
+from transformers import RobertaTokenizer, AutoModelForMaskedLM
 from hierarchy import *
 from transformers import pipeline
 from PARAM import MODEL_NAME_OR_PATH
+from pipeline import FillMaskPipeline
 
-unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
 tokenizer = RobertaTokenizer.from_pretrained(MODEL_NAME_OR_PATH)
+# unmasker = pipeline('fill-mask', model=MODEL_NAME_OR_PATH, device=0)
+unmasker_model = AutoModelForMaskedLM.from_pretrained(MODEL_NAME_OR_PATH)
+unmasker = FillMaskPipeline(model=unmasker_model, tokenizer=tokenizer, device=0)
 
 def save_to_file(sents):
     with open('tmp.txt', 'a') as fout:

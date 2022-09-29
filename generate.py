@@ -4,6 +4,7 @@ import string
 import torch
 import torch.nn.functional as F
 
+
 def generate_candidate_instance(unmasker, tokenizer, candidate_scores, words, entity_name, new_instance_phrase, pred_type, \
     candidate_num):
     stop_word_list = ['other', 'his', 'her', 'its', 'this', 'it', 'another']
