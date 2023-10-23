@@ -53,7 +53,7 @@ def process_data(ner_tags, sents, tokenizer, filename='', max_seq_len=128):
     parent_dict = {}
 
     if filename != '':
-        child_dict, parent_dict, level_dict = extract_hierarchy(filename)
+        child_dict, parent_dict, level_dict, _ = extract_hierarchy(filename)
         node_list = [node for node in parent_dict if len(parent_dict[node][node]) == 1]
         node_id_list = [tokenizer.encode(" "+node)[1] for node in node_list]
         # node_id_list = [x for x in range(len(tokenizer.get_vocab()))]
@@ -170,7 +170,7 @@ def read_file_and_hier(filename, new_hier, old_hier, train_type_count, use_node_
     extract_new_instance=False):
     train_types = {}
     reverse_train_types = {}
-    child_dict, parent_dict, level_dict = extract_hierarchy(new_hier)
+    child_dict, parent_dict, level_dict, relation_list = extract_hierarchy(new_hier)
     new_instances = defaultdict(dict)
     
     with open(old_hier) as f:
@@ -189,6 +189,14 @@ def read_file_and_hier(filename, new_hier, old_hier, train_type_count, use_node_
     else:
         node_list = None
         node_id_list = [x for x in range(len(tokenizer.get_vocab()))]
+
+    r_list = []
+    for k in relation_list:
+        child = tokenizer.encode(' '+k)[1]
+        parent = tokenizer.encode(' '+relation_list[k])[1]
+        if child in node_id_list and parent in node_id_list:
+            r_list.append([node_id_list.index(child), node_id_list.index(parent)])
+    print(f"r list: {r_list}")
     
     good_sent = 0
     bad_sent = 0
@@ -259,4 +267,4 @@ def read_file_and_hier(filename, new_hier, old_hier, train_type_count, use_node_
         new_instances_id[tokenizer.encode(' '+entity_type)[1]] = \
             {tokenizer.encode(k)[1]:v for k,v in new_instances[entity_type].items()}
     return [train_sent, sent_att, sent_mask, sent_label, label_ids, node_id_list, reverse_train_types,\
-        new_instances_id, [total_words, total_entity_list]]
+        new_instances_id, r_list, [total_words, total_entity_list]]

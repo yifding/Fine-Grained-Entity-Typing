@@ -1,6 +1,7 @@
 import os
 from tkinter import FALSE
 import torch
+import torch.nn.functional as F
 from transformers import RobertaTokenizer, AutoModelForMaskedLM
 from transformers import AdamW, get_linear_schedule_with_warmup
 import argparse
@@ -92,7 +93,24 @@ def cal_disc_loss(node_id_list, keywords_list):
     loss_fct = CrossEntropyLoss()
     disc_loss = loss_fct(score, keyword_class)
     return disc_loss
-    
+
+def inclusive_loss(node_id_list, keywords_list, r_list):
+    x = model.label_project.weight.data.cpu().numpy()
+    inc_loss = 0
+    for c, p in r_list:
+        inc_loss += 1 - F.cosine_similarity(model.label_project.weight[c], model.label_project.weight[p], dim = 0)
+
+    return inc_loss
+
+def exclusive_loss(node_id_list, keywords_list, r_list):
+    x = model.label_project.weight.data.cpu().numpy()
+    exc_loss = 0
+    for c1, p1 in r_list:
+        for c2, p2 in r_list:
+            if p1 == p2 and c1 != c2:
+                exc_loss += F.cosine_similarity(model.label_project.weight[c1], model.label_project.weight[c2], dim = 0)/2/len(node_id_list)
+
+    return exc_loss
 
 def match_results(logits, sub_test_mask, sub_label_ids, node_id_list,
     total_pred, total_gold, total_crct):
@@ -141,7 +159,7 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
     new_ensem_scores = []
     training_ratio = epoch / N_EPOCHS
     train_sent, sent_att, sent_mask, sent_label, label_ids, node_id_list, reverse_train_types,\
-        new_instances, entity_list = pos_data
+        new_instances, r_list, entity_list = pos_data
     if neg_data is not None:
         neg_sent, neg_att, neg_mask, neg_label = neg_data
     
@@ -308,8 +326,10 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
 
         if keywords_list != []:
             disc_loss = cal_disc_loss(node_id_list, keywords_list)
+            inc_loss = inclusive_loss(node_id_list, keywords_list, r_list)
+            exc_loss = exclusive_loss(node_id_list, keywords_list, r_list)
             disc_loss.backward()
-            epoch_loss += disc_loss.item()
+            epoch_loss += disc_loss.item()+ inc_loss.item() + exc_loss.item()
 
         optimizer.step()
         scheduler.step()
@@ -337,7 +357,7 @@ def test_func(pos_data, batch_size, word2label, project=False, epoch=0, shuffle=
     val_loss = 0
     total_pred, total_gold, total_crct = [], [], []
     test_sent, test_att, test_mask, test_label, label_ids, node_id_list, reverse_train_types,\
-        new_instances, entity_list = pos_data
+        new_instances, r_list, entity_list = pos_data
     node_id_list = node_id_list.to(device)
     total_step = int((len(test_sent) - 1) / batch_size) + 1
     
