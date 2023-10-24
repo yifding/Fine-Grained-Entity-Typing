@@ -329,6 +329,8 @@ def train_func(epoch, N_EPOCHS, pos_data, neg_data, random_iter, batch_size, wor
             inc_loss = inclusive_loss(node_id_list, keywords_list, r_list)
             exc_loss = exclusive_loss(node_id_list, keywords_list, r_list)
             disc_loss.backward()
+            inc_loss.backward()
+            exc_loss.backward()
             epoch_loss += disc_loss.item()+ inc_loss.item() + exc_loss.item()
 
         optimizer.step()
